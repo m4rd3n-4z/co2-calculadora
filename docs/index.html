@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora CO2</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: Arial; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 20px;
+        }
+        .calc { 
+            background: white; 
+            padding: 50px; 
+            border-radius: 20px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
+            max-width: 900px; 
+            width: 100%; 
+            text-align: center;
+        }
+        h1 { color: #333; margin-bottom: 35px; font-size: 2.5em; }
+        label { display: block; margin-top: 15px; margin-bottom: 10px; font-weight: bold; color: #333; font-size: 16px; }
+        input, select { 
+            width: 100%; padding: 18px; margin: 12px 0; 
+            border: 2px solid #ddd; border-radius: 10px; 
+            font-size: 16px; box-sizing: border-box;
+        }
+        input:focus, select:focus { border-color: #4CAF50; outline: none; }
+        button { 
+            width: 100%; padding: 18px; background: #4CAF50; 
+            color: white; border: none; border-radius: 10px; 
+            font-size: 20px; font-weight: bold; cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover { background: #45a049; }
+        .transporte-buttons { 
+            display: grid; 
+            grid-template-columns: repeat(5, 1fr); 
+            gap: 15px; 
+            margin: 25px 0;
+        }
+        .btn-transporte { 
+            padding: 16px 12px; 
+            background: #ddd; 
+            color: #333;
+            border: 2px solid #bbb; 
+            border-radius: 10px; 
+            font-size: 16px; 
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .btn-transporte:hover { 
+            background: #ccc; 
+            border-color: #999;
+        }
+        .btn-transporte.active { 
+            background: #228b22; 
+            color: white; 
+            border-color: #228b22;
+        }
+        #resultado { 
+            margin-top: 30px; font-size: 3em; font-weight: bold; 
+            min-height: 80px; display: flex; align-items: center; 
+            justify-content: center;
+        }
+        .erro { color: #f44336; }
+        .sucesso { color: #4CAF50; }
+        .grafico-container {
+            margin-top: 40px;
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 15px;
+            display: none;
+        }
+        .grafico-container.show {
+            display: block;
+        }
+        .grafico-container h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+    </style>
+</head>
+<body>
+    <div class="calc">
+        <h1>🧮 Calculadora CO2</h1>
+        <label for="cidade1">Cidade de Origem:</label>
+        <select id="cidade1" onchange="atualizarDistancia()">
+            <option value="">Selecione uma cidade</option>
+            <option value="sao_paulo">São Paulo</option>
+            <option value="rio_janeiro">Rio de Janeiro</option>
+            <option value="belo_horizonte">Belo Horizonte</option>
+            <option value="brasilia">Brasília</option>
+            <option value="salvador">Salvador</option>
+            <option value="fortaleza">Fortaleza</option>
+            <option value="curitiba">Curitiba</option>
+            <option value="manaus">Manaus</option>
+            <option value="recife">Recife</option>
+            <option value="porto_alegre">Porto Alegre</option>
+            <option value="belem">Belém</option>
+            <option value="goiania">Goiânia</option>
+            <option value="sao_luis">São Luís</option>
+            <option value="teresina">Teresina</option>
+            <option value="joao_pessoa">João Pessoa</option>
+        </select>
+
+        <label for="cidade2">Cidade de Destino:</label>
+        <select id="cidade2" onchange="atualizarDistancia()">
+            <option value="">Selecione uma cidade</option>
+            <option value="sao_paulo">São Paulo</option>
+            <option value="rio_janeiro">Rio de Janeiro</option>
+            <option value="belo_horizonte">Belo Horizonte</option>
+            <option value="brasilia">Brasília</option>
+            <option value="salvador">Salvador</option>
+            <option value="fortaleza">Fortaleza</option>
+            <option value="curitiba">Curitiba</option>
+            <option value="manaus">Manaus</option>
+            <option value="recife">Recife</option>
+            <option value="porto_alegre">Porto Alegre</option>
+            <option value="belem">Belém</option>
+            <option value="goiania">Goiânia</option>
+            <option value="sao_luis">São Luís</option>
+            <option value="teresina">Teresina</option>
+            <option value="joao_pessoa">João Pessoa</option>
+        </select>
+
+        <div id="distanciaCalculada" style="margin: 20px 0; font-size: 1.4em; color: #666; min-height: 40px;"></div>
+
+        <label>Tipo de Transporte:</label>
+        <div class="transporte-buttons">
+            <button class="btn-transporte" onclick="selecionarTransporte('carro')">🚗 Carro</button>
+            <button class="btn-transporte" onclick="selecionarTransporte('onibus')">🚌 Ônibus</button>
+            <button class="btn-transporte" onclick="selecionarTransporte('moto')">🏍️ Moto</button>
+            <button class="btn-transporte" onclick="selecionarTransporte('aviao')">✈️ Avião</button>
+            <button class="btn-transporte" onclick="selecionarTransporte('trem')">🚂 Trem</button>
+        </div>
+        <button onclick="calcular()" style="margin-top: 30px;">Calcular Emissão</button>
+        <div id="resultado"></div>
+        
+        <div class="grafico-container" id="graficoContainer">
+            <h3>📊 Comparativo de Emissões CO2 por Transporte</h3>
+            <canvas id="graficoTransporte" style="max-height: 300px;"></canvas>
+            <h3 style="margin-top: 40px;">💰 Custo em Créditos de Carbono</h3>
+            <canvas id="graficoCusto" style="max-height: 300px;"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let transporteSelecionado = '';
+        const FATORES = { carro: 0.25, onibus: 0.10, moto: 0.15, aviao: 0.25, trem: 0.04 };
+        const PRECO_CREDITO_CARBONO = 100; // R$ por tonelada de CO2
+        
+        const CIDADES = {
+            sao_paulo: { nome: 'São Paulo', lat: -23.5505, lng: -46.6333 },
+            rio_janeiro: { nome: 'Rio de Janeiro', lat: -22.9068, lng: -43.1729 },
+            belo_horizonte: { nome: 'Belo Horizonte', lat: -19.9167, lng: -43.9345 },
+            brasilia: { nome: 'Brasília', lat: -15.7975, lng: -47.8919 },
+            salvador: { nome: 'Salvador', lat: -12.9714, lng: -38.5014 },
+            fortaleza: { nome: 'Fortaleza', lat: -3.7319, lng: -38.5267 },
+            curitiba: { nome: 'Curitiba', lat: -25.4284, lng: -49.2733 },
+            manaus: { nome: 'Manaus', lat: -3.1190, lng: -60.0217 },
+            recife: { nome: 'Recife', lat: -8.0476, lng: -34.8770 },
+            porto_alegre: { nome: 'Porto Alegre', lat: -30.0346, lng: -51.2177 },
+            belem: { nome: 'Belém', lat: -1.4554, lng: -48.4897 },
+            goiania: { nome: 'Goiânia', lat: -15.7942, lng: -48.0882 },
+            sao_luis: { nome: 'São Luís', lat: -2.5356, lng: -44.2956 },
+            teresina: { nome: 'Teresina', lat: -5.0892, lng: -42.8019 },
+            joao_pessoa: { nome: 'João Pessoa', lat: -7.1195, lng: -34.8450 }
+        };
+
+        // Fórmula de Haversine para calcular distância entre 2 pontos geográficos
+        function calcularDistancia(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Raio da Terra em km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function atualizarDistancia() {
+            const cidade1 = document.getElementById('cidade1').value;
+            const cidade2 = document.getElementById('cidade2').value;
+            const distanciaDiv = document.getElementById('distanciaCalculada');
+
+            if (!cidade1 || !cidade2) {
+                distanciaDiv.textContent = '';
+                return;
+            }
+
+            if (cidade1 === cidade2) {
+                distanciaDiv.innerHTML = '<span style="color: #ff9800;">⚠️ Selecione cidades diferentes!</span>';
+                return;
+            }
+
+            const c1 = CIDADES[cidade1];
+            const c2 = CIDADES[cidade2];
+            const distancia = calcularDistancia(c1.lat, c1.lng, c2.lat, c2.lng);
+            
+            distanciaDiv.innerHTML = `<strong>📍 Distância: ${distancia.toFixed(0)} km</strong>`;
+        }
+
+        function selecionarTransporte(tipo) {
+            transporteSelecionado = tipo;
+            // Remover classe active de todos os botões
+            document.querySelectorAll('.btn-transporte').forEach(btn => btn.classList.remove('active'));
+            // Adicionar classe active ao botão clicado
+            event.target.classList.add('active');
+        }
+
+        function calcular() {
+            const cidade1 = document.getElementById('cidade1').value;
+            const cidade2 = document.getElementById('cidade2').value;
+            const res = document.getElementById('resultado');
+            
+            if (!cidade1 || !cidade2) {
+                res.textContent = '❌ Selecione as duas cidades!';
+                res.className = 'erro';
+                document.getElementById('graficoContainer').classList.remove('show');
+                return;
+            }
+
+            if (cidade1 === cidade2) {
+                res.textContent = '❌ As cidades devem ser diferentes!';
+                res.className = 'erro';
+                document.getElementById('graficoContainer').classList.remove('show');
+                return;
+            }
+
+            if (!transporteSelecionado) {
+                res.textContent = '❌ Escolha um tipo de transporte!';
+                res.className = 'erro';
+                document.getElementById('graficoContainer').classList.remove('show');
+                return;
+            }
+            
+            const c1 = CIDADES[cidade1];
+            const c2 = CIDADES[cidade2];
+            const dist = calcularDistancia(c1.lat, c1.lng, c2.lat, c2.lng);
+            const co2 = dist * FATORES[transporteSelecionado];
+            const custo = (co2 / 1000) * PRECO_CREDITO_CARBONO; // Converter kg para tonelada
+            
+            res.innerHTML = `<span class="sucesso">🌿 ${co2.toFixed(1)} kg CO2<br/><small>(${dist.toFixed(0)} km)</small><br/><strong style="color: #228b22; font-size: 0.9em; margin-top: 10px; display: block;">Custo em Créditos: R$ ${custo.toFixed(2)}</strong></span>`;
+            
+            // Calcular emissões para todos os transportes
+            const emissoes = {};
+            const custos = {};
+            const cores = {
+                carro: '#FF6B6B',
+                onibus: '#4ECDC4',
+                moto: '#FFE66D',
+                aviao: '#95E1D3',
+                trem: '#C7CEEA'
+            };
+            const nomes = {
+                carro: '🚗 Carro',
+                onibus: '🚌 Ônibus',
+                moto: '🏍️ Moto',
+                aviao: '✈️ Avião',
+                trem: '🚂 Trem'
+            };
+            
+            Object.keys(FATORES).forEach(transporte => {
+                const co2Transporte = (dist * FATORES[transporte]).toFixed(1);
+                emissoes[transporte] = co2Transporte;
+                custos[transporte] = ((parseFloat(co2Transporte) / 1000) * PRECO_CREDITO_CARBONO).toFixed(2);
+            });
+            
+            // Mostrar gráfico
+            mostrarGraficoComparativo(emissoes, custos, cores, nomes, dist);
+        }
+        
+        function mostrarGraficoComparativo(emissoes, custos, cores, nomes, distancia) {
+            const graficoContainer = document.getElementById('graficoContainer');
+            graficoContainer.classList.add('show');
+            
+            const ctx = document.getElementById('graficoTransporte').getContext('2d');
+            const ctxCusto = document.getElementById('graficoCusto').getContext('2d');
+            
+            // Destruir gráficos anteriores se existirem
+            if (window.graficoAtual) {
+                window.graficoAtual.destroy();
+            }
+            if (window.graficoCustoAtual) {
+                window.graficoCustoAtual.destroy();
+            }
+            
+            const dados = Object.keys(emissoes).map(t => ({
+                nome: nomes[t],
+                co2: parseFloat(emissoes[t]),
+                custo: parseFloat(custos[t]),
+                tipo: t
+            }));
+            
+            // Gráfico de CO2
+            window.graficoAtual = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dados.map(d => d.nome),
+                    datasets: [{
+                        label: `CO2 (kg) - Distância: ${distancia.toFixed(0)} km`,
+                        data: dados.map(d => d.co2),
+                        backgroundColor: [
+                            cores.carro,
+                            cores.onibus,
+                            cores.moto,
+                            cores.aviao,
+                            cores.trem
+                        ],
+                        borderColor: [
+                            '#FF5252',
+                            '#2BA091',
+                            '#FFD700',
+                            '#6FCF97',
+                            '#A78BFA'
+                        ],
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: { size: 14, weight: 'bold' },
+                                padding: 15,
+                                color: '#333'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                font: { size: 12 },
+                                color: '#666',
+                                callback: function(value) {
+                                    return value.toFixed(1) + ' kg';
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: { size: 13, weight: 'bold' },
+                                color: '#333'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Gráfico de Custo
+            window.graficoCustoAtual = new Chart(ctxCusto, {
+                type: 'bar',
+                data: {
+                    labels: dados.map(d => d.nome),
+                    datasets: [{
+                        label: 'Custo em Créditos (R$) - Preço: R$100/tonelada',
+                        data: dados.map(d => d.custo),
+                        backgroundColor: [
+                            '#4CAF50',
+                            '#8BC34A',
+                            '#CDDC39',
+                            '#FFC107',
+                            '#FF9800'
+                        ],
+                        borderColor: [
+                            '#388E3C',
+                            '#689F38',
+                            '#AFB42B',
+                            '#FFA000',
+                            '#F57C00'
+                        ],
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: { size: 14, weight: 'bold' },
+                                padding: 15,
+                                color: '#333'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                font: { size: 12 },
+                                color: '#666',
+                                callback: function(value) {
+                                    return 'R$ ' + value.toFixed(2);
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: { size: 13, weight: 'bold' },
+                                color: '#333'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
